@@ -13,8 +13,8 @@ const fetch = require('node-fetch')
 const fs = require('fs')
 const ethers = require("../packages/ethers")
 
-// const endpoint = 'https://civilian.cpchain.io'
-const endpoint = 'http://127.0.0.1:8501'
+const endpoint = 'https://civilian.cpchain.io'
+// const endpoint = 'http://127.0.0.1:8501'
 
 const provider = new ethers.providers.JsonRpcProvider(endpoint);
 

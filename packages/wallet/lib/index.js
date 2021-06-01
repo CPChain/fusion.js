@@ -167,6 +167,19 @@ var Wallet = /** @class */ (function (_super) {
             return transactions_1.serialize(tx, signature);
         });
     };
+    Wallet.prototype.signCPCTransaction = function (transaction) {
+        var _this = this;
+        return properties_1.resolveProperties(transaction).then(function (tx) {
+            if (tx.from != null) {
+                if (address_1.getAddress(tx.from) !== _this.address) {
+                    logger.throwArgumentError("transaction from address mismatch", "transaction.from", transaction.from);
+                }
+                delete tx.from;
+            }
+            var signature = _this._signingKey().signDigest(keccak256_1.keccak256(transactions_1.serializeCPC(tx)));
+            return transactions_1.serializeCPC(tx, signature);
+        });
+    };
     Wallet.prototype.signMessage = function (message) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {

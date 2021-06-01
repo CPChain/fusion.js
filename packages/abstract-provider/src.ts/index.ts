@@ -31,6 +31,21 @@ export type TransactionRequest = {
     accessList?: AccessListish;
 }
 
+export type CPCTransactionRequest = {
+    to?: string,
+    from?: string,
+    nonce?: BigNumberish,
+
+    gas?: BigNumberish,
+    gasPrice?: BigNumberish,
+
+    input?: BytesLike,
+    value?: BigNumberish,
+    chainId?: number
+
+    type?: number;
+}
+
 export interface TransactionResponse extends Transaction {
     hash: string;
 

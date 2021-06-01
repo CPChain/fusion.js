@@ -1,4 +1,4 @@
-import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
+import { Provider, TransactionRequest, CPCTransactionRequest } from "@ethersproject/abstract-provider";
 import { ExternallyOwnedAccount, Signer, TypedDataDomain, TypedDataField, TypedDataSigner } from "@ethersproject/abstract-signer";
 import { Bytes, BytesLike, SignatureLike } from "@ethersproject/bytes";
 import { Mnemonic } from "@ethersproject/hdnode";
@@ -17,6 +17,7 @@ export declare class Wallet extends Signer implements ExternallyOwnedAccount, Ty
     getAddress(): Promise<string>;
     connect(provider: Provider): Wallet;
     signTransaction(transaction: TransactionRequest): Promise<string>;
+    signCPCTransaction(transaction: CPCTransactionRequest): Promise<string>;
     signMessage(message: Bytes | string): Promise<string>;
     _signTypedData(domain: TypedDataDomain, types: Record<string, Array<TypedDataField>>, value: Record<string, any>): Promise<string>;
     encrypt(password: Bytes | string, options?: any, progressCallback?: ProgressCallback): Promise<string>;

@@ -1,7 +1,7 @@
 "use strict";
 
 import { getAddress } from "@ethersproject/address";
-import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
+import { Provider, TransactionRequest, CPCTransactionRequest } from "@ethersproject/abstract-provider";
 import { ExternallyOwnedAccount, Signer, TypedDataDomain, TypedDataField, TypedDataSigner } from "@ethersproject/abstract-signer";
 import { arrayify, Bytes, BytesLike, concat, hexDataSlice, isHexString, joinSignature, SignatureLike } from "@ethersproject/bytes";
 import { hashMessage, _TypedDataEncoder } from "@ethersproject/hash";
@@ -11,7 +11,7 @@ import { defineReadOnly, resolveProperties } from "@ethersproject/properties";
 import { randomBytes } from "@ethersproject/random";
 import { SigningKey } from "@ethersproject/signing-key";
 import { decryptJsonWallet, decryptJsonWalletSync, encryptKeystore, ProgressCallback } from "@ethersproject/json-wallets";
-import { computeAddress, recoverAddress, serialize, UnsignedTransaction } from "@ethersproject/transactions";
+import { computeAddress, recoverAddress, serialize, UnsignedTransaction, UnsignedCPCTransaction, serializeCPC } from "@ethersproject/transactions";
 import { Wordlist } from "@ethersproject/wordlists";
 
 import { Logger } from "@ethersproject/logger";
@@ -125,6 +125,20 @@ export class Wallet extends Signer implements ExternallyOwnedAccount, TypedDataS
 
             const signature = this._signingKey().signDigest(keccak256(serialize(<UnsignedTransaction>tx)));
             return serialize(<UnsignedTransaction>tx, signature);
+        });
+    }
+
+    signCPCTransaction(transaction: CPCTransactionRequest): Promise<string> {
+        return resolveProperties(transaction).then((tx) => {
+            if (tx.from != null) {
+                if (getAddress(tx.from) !== this.address) {
+                    logger.throwArgumentError("transaction from address mismatch", "transaction.from", transaction.from);
+                }
+                delete tx.from;
+            }
+
+            const signature = this._signingKey().signDigest(keccak256(serializeCPC(<UnsignedCPCTransaction>tx)));
+            return serializeCPC(<UnsignedCPCTransaction>tx, signature);
         });
     }
 

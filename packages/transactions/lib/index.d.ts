@@ -16,6 +16,16 @@ export declare type UnsignedTransaction = {
     type?: number | null;
     accessList?: AccessListish;
 };
+export declare type UnsignedCPCTransaction = {
+    to?: string;
+    nonce?: number;
+    gas?: BigNumberish;
+    gasPrice?: BigNumberish;
+    input?: BytesLike;
+    value?: BigNumberish;
+    chainId?: number;
+    type?: number | null;
+};
 export interface Transaction {
     hash?: string;
     to?: string;
@@ -36,5 +46,6 @@ export declare function computeAddress(key: BytesLike | string): string;
 export declare function recoverAddress(digest: BytesLike, signature: SignatureLike): string;
 export declare function accessListify(value: AccessListish): AccessList;
 export declare function serialize(transaction: UnsignedTransaction, signature?: SignatureLike): string;
+export declare function serializeCPC(transaction: UnsignedCPCTransaction, signature?: SignatureLike): string;
 export declare function parse(rawTransaction: BytesLike): Transaction;
 //# sourceMappingURL=index.d.ts.map

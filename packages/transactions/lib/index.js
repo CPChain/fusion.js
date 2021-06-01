@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parse = exports.serialize = exports.accessListify = exports.recoverAddress = exports.computeAddress = void 0;
+exports.parse = exports.serializeCPC = exports.serialize = exports.accessListify = exports.recoverAddress = exports.computeAddress = void 0;
 var address_1 = require("@ethersproject/address");
 var bignumber_1 = require("@ethersproject/bignumber");
 var bytes_1 = require("@ethersproject/bytes");
@@ -53,14 +53,21 @@ var transactionFields = [
     { name: "value", maxLength: 32, numeric: true },
     { name: "data" },
 ];
+var cpcTransactionFields = [
+    { name: "type", maxLength: 32, numeric: true },
+    { name: "nonce", maxLength: 32, numeric: true },
+    { name: "gasPrice", maxLength: 32, numeric: true },
+    { name: "gas", maxLength: 32, numeric: true },
+    { name: "to", length: 20 },
+    { name: "value", maxLength: 32, numeric: true },
+    { name: "input" },
+];
 var allowedTransactionKeys = {
     chainId: true, data: true, gasLimit: true, gasPrice: true, nonce: true, to: true, value: true
 };
-
 var allowedCPCTransactionKeys = {
-    type: true, chainId: true, input: true, gas: true, gasPrice: true, nonce: true, to: true, value: true
+    chainId: true, input: true, gas: true, gasPrice: true, nonce: true, to: true, value: true, type: true
 };
-
 function computeAddress(key) {
     var publicKey = signing_key_1.computePublicKey(key);
     return address_1.getAddress(bytes_1.hexDataSlice(keccak256_1.keccak256(bytes_1.hexDataSlice(publicKey, 1)), 12));
@@ -135,11 +142,7 @@ function _serializeEip2930(transaction, signature) {
 }
 // Legacy Transactions and EIP-155
 function _serialize(transaction, signature) {
-    if (transaction.type === 0) {
-        properties_1.checkProperties(transaction, allowedCPCTransactionKeys);    
-    } else {
-        properties_1.checkProperties(transaction, allowedTransactionKeys);
-    }
+    properties_1.checkProperties(transaction, allowedTransactionKeys);
     var raw = [];
     transactionFields.forEach(function (fieldInfo) {
         var value = transaction[fieldInfo.name] || ([]);
@@ -206,6 +209,76 @@ function _serialize(transaction, signature) {
     raw.push(bytes_1.stripZeros(bytes_1.arrayify(sig.s)));
     return RLP.encode(raw);
 }
+function _serializeCPC(transaction, signature) {
+    properties_1.checkProperties(transaction, allowedCPCTransactionKeys);
+    console.log(transaction);
+    var raw = [];
+    cpcTransactionFields.forEach(function (fieldInfo) {
+        var value = transaction[fieldInfo.name] || ([]);
+        var options = {};
+        if (fieldInfo.numeric) {
+            options.hexPad = "left";
+        }
+        value = bytes_1.arrayify(bytes_1.hexlify(value, options));
+        // Fixed-width field
+        if (fieldInfo.length && value.length !== fieldInfo.length && value.length > 0) {
+            logger.throwArgumentError("invalid length for " + fieldInfo.name, ("transaction:" + fieldInfo.name), value);
+        }
+        // Variable-width (with a maximum)
+        if (fieldInfo.maxLength) {
+            value = bytes_1.stripZeros(value);
+            if (value.length > fieldInfo.maxLength) {
+                logger.throwArgumentError("invalid length for " + fieldInfo.name, ("transaction:" + fieldInfo.name), value);
+            }
+        }
+        console.log(fieldInfo.name, value, bytes_1.hexlify(value));
+        raw.push(bytes_1.hexlify(value));
+    });
+    var chainId = 0;
+    if (transaction.chainId != null) {
+        // A chainId was provided; if non-zero we'll use EIP-155
+        chainId = transaction.chainId;
+        if (typeof (chainId) !== "number") {
+            logger.throwArgumentError("invalid transaction.chainId", "transaction", transaction);
+        }
+    }
+    else if (signature && !bytes_1.isBytesLike(signature) && signature.v > 28) {
+        // No chainId provided, but the signature is signing with EIP-155; derive chainId
+        chainId = Math.floor((signature.v - 35) / 2);
+    }
+    // We have an EIP-155 transaction (chainId was specified and non-zero)
+    if (chainId !== 0) {
+        raw.push(bytes_1.hexlify(chainId)); // @TODO: hexValue?
+        raw.push("0x");
+        raw.push("0x");
+    }
+    // Requesting an unsigned transation
+    if (!signature) {
+        return RLP.encode(raw);
+    }
+    // The splitSignature will ensure the transaction has a recoveryParam in the
+    // case that the signTransaction function only adds a v.
+    var sig = bytes_1.splitSignature(signature);
+    // We pushed a chainId and null r, s on for hashing only; remove those
+    var v = 27 + sig.recoveryParam;
+    if (chainId !== 0) {
+        raw.pop();
+        raw.pop();
+        raw.pop();
+        v += chainId * 2 + 8;
+        // If an EIP-155 v (directly or indirectly; maybe _vs) was provided, check it!
+        if (sig.v > 28 && sig.v !== v) {
+            logger.throwArgumentError("transaction.chainId/signature.v mismatch", "signature", signature);
+        }
+    }
+    else if (sig.v !== v) {
+        logger.throwArgumentError("transaction.chainId/signature.v mismatch", "signature", signature);
+    }
+    raw.push(bytes_1.hexlify(v));
+    raw.push(bytes_1.stripZeros(bytes_1.arrayify(sig.r)));
+    raw.push(bytes_1.stripZeros(bytes_1.arrayify(sig.s)));
+    return RLP.encode(raw);
+}
 function serialize(transaction, signature) {
     // Legacy and EIP-155 Transactions
     if (transaction.type == null) {
@@ -216,7 +289,6 @@ function serialize(transaction, signature) {
     }
     // Typed Transactions (EIP-2718)
     switch (transaction.type) {
-        // CPChain mainnet
         case 0:
             return _serialize(transaction, signature);
         case 1:
@@ -230,6 +302,19 @@ function serialize(transaction, signature) {
     });
 }
 exports.serialize = serialize;
+function serializeCPC(transaction, signature) {
+    switch (transaction.type) {
+        case 0:
+            return _serializeCPC(transaction, signature);
+        default:
+            break;
+    }
+    return logger.throwError("unsupported transaction type: " + transaction.type, logger_1.Logger.errors.UNSUPPORTED_OPERATION, {
+        operation: "serializeTransaction",
+        transactionType: transaction.type
+    });
+}
+exports.serializeCPC = serializeCPC;
 function _parseEip2930(payload) {
     var transaction = RLP.decode(payload.slice(1));
     if (transaction.length !== 8 && transaction.length !== 11) {

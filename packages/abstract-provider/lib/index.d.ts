@@ -16,6 +16,17 @@ export declare type TransactionRequest = {
     type?: number;
     accessList?: AccessListish;
 };
+export declare type CPCTransactionRequest = {
+    to?: string;
+    from?: string;
+    nonce?: BigNumberish;
+    gas?: BigNumberish;
+    gasPrice?: BigNumberish;
+    input?: BytesLike;
+    value?: BigNumberish;
+    chainId?: number;
+    type?: number;
+};
 export interface TransactionResponse extends Transaction {
     hash: string;
     blockNumber?: number;
