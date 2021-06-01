@@ -261,6 +261,8 @@ export function serialize(transaction: UnsignedTransaction, signature?: Signatur
 
     // Typed Transactions (EIP-2718)
     switch (transaction.type) {
+        case 0:
+            return _serialize(transaction, signature);
         case 1:
             return _serializeEip2930(transaction, signature);
         default:

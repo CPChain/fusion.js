@@ -56,6 +56,11 @@ var transactionFields = [
 var allowedTransactionKeys = {
     chainId: true, data: true, gasLimit: true, gasPrice: true, nonce: true, to: true, value: true
 };
+
+var allowedCPCTransactionKeys = {
+    type: true, chainId: true, input: true, gas: true, gasPrice: true, nonce: true, to: true, value: true
+};
+
 function computeAddress(key) {
     var publicKey = signing_key_1.computePublicKey(key);
     return address_1.getAddress(bytes_1.hexDataSlice(keccak256_1.keccak256(bytes_1.hexDataSlice(publicKey, 1)), 12));
@@ -130,7 +135,11 @@ function _serializeEip2930(transaction, signature) {
 }
 // Legacy Transactions and EIP-155
 function _serialize(transaction, signature) {
-    properties_1.checkProperties(transaction, allowedTransactionKeys);
+    if (transaction.type === 0) {
+        properties_1.checkProperties(transaction, allowedCPCTransactionKeys);    
+    } else {
+        properties_1.checkProperties(transaction, allowedTransactionKeys);
+    }
     var raw = [];
     transactionFields.forEach(function (fieldInfo) {
         var value = transaction[fieldInfo.name] || ([]);
@@ -207,6 +216,9 @@ function serialize(transaction, signature) {
     }
     // Typed Transactions (EIP-2718)
     switch (transaction.type) {
+        // CPChain mainnet
+        case 0:
+            return _serialize(transaction, signature);
         case 1:
             return _serializeEip2930(transaction, signature);
         default:
