@@ -19,7 +19,7 @@ import { defineReadOnly, resolveProperties } from "@ethersproject/properties";
 import { randomBytes } from "@ethersproject/random";
 import { SigningKey } from "@ethersproject/signing-key";
 import { decryptJsonWallet, decryptJsonWalletSync, encryptKeystore } from "@ethersproject/json-wallets";
-import { computeAddress, recoverAddress, serialize } from "@ethersproject/transactions";
+import { computeAddress, recoverAddress, serialize, serializeCPC } from "@ethersproject/transactions";
 import { Logger } from "@ethersproject/logger";
 import { version } from "./_version";
 const logger = new Logger(version);
@@ -104,6 +104,18 @@ export class Wallet extends Signer {
             }
             const signature = this._signingKey().signDigest(keccak256(serialize(tx)));
             return serialize(tx, signature);
+        });
+    }
+    signCPCTransaction(transaction) {
+        return resolveProperties(transaction).then((tx) => {
+            if (tx.from != null) {
+                if (getAddress(tx.from) !== this.address) {
+                    logger.throwArgumentError("transaction from address mismatch", "transaction.from", transaction.from);
+                }
+                delete tx.from;
+            }
+            const signature = this._signingKey().signDigest(keccak256(serializeCPC(tx)));
+            return serializeCPC(tx, signature);
         });
     }
     signMessage(message) {
